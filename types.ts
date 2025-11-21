@@ -5,7 +5,9 @@ export interface Message {
   text: string;
 }
 
-// Phase 3 JSON Structure Types
+// ==========================================
+// CORE DATA STRUCTURES (Generation Output)
+// ==========================================
 export interface ProfessionalResume {
   personalInfo: {
     name: string;
@@ -72,9 +74,78 @@ export interface FinalOutput {
   careerInsights: CareerInsights;
 }
 
-export enum AppState {
-  Welcome,
-  Chat,
-  Generating,
-  Results
+// ==========================================
+// DATABASE MODELS (Matches Prisma Schema)
+// ==========================================
+
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  
+  // Subscription
+  plan: string; // "free", "pro", "enterprise"
+  planExpiresAt?: string | null;
+  
+  // UserProfile Fields (Flattened for frontend ease, or separated if strict)
+  phone?: string | null;
+  location?: string | null;
+  linkedin?: string | null;
+  portfolio?: string | null;
+  preferences?: any | null;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Internal use for Mock Backend password storage
+export interface UserWithAuth extends User {
+  passwordHash: string;
+}
+
+export interface Resume {
+  id: string;
+  userId: string;
+  
+  title: string;
+  version: number;
+  
+  // JSON Data Columns
+  professionalResumeData: ProfessionalResume;
+  careerInsightsData: CareerInsights;
+  conversationHistory: Message[];
+  
+  template: string;
+  isActive: boolean;
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Session {
+  id: string;
+  userId: string;
+  token: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface Analytics {
+  id: string;
+  userId: string | null;
+  event: string;
+  metadata: any;
+  createdAt: string;
+}
+
+// ==========================================
+// APP STATE
+// ==========================================
+
+export type AppView = 'landing' | 'auth' | 'dashboard' | 'chat' | 'generating' | 'results';
+
+export interface AppState {
+  view: AppView;
+  user: User | null;
+  activeResumeId: string | null;
 }
