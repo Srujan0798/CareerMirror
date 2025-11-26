@@ -26,6 +26,45 @@ const mockCompare = (pwd: string, hash: string) => hash === `hashed_${btoa(pwd)}
 class MockBackendService {
   
   // ==========================================
+  // AUTH MIDDLEWARE / GUARD
+  // ==========================================
+  /**
+   * Simulates backend middleware like `authMiddleware`.
+   * Verifies token existence, validity, and ownership.
+   * Throws 401/403 equivalent errors if checks fail.
+   */
+  private async authGuard(targetUserId?: string): Promise<string> {
+    // 1. Supabase Mode: Middleware is handled by Postgres RLS Policies
+    if (isSupabaseConfigured()) return targetUserId || ''; 
+
+    // 2. Mock Mode: Simulate Latency & Verification
+    await delay(200); 
+    
+    const token = localStorage.getItem('cm_auth_token');
+    if (!token) throw new Error("Authentication required (401)");
+
+    const sessions = this.getTable<Session>(DB_KEYS.SESSIONS);
+    const session = sessions.find(s => s.token === token);
+    
+    if (!session) {
+      localStorage.removeItem('cm_auth_token'); // Cleanup stale token
+      throw new Error("Invalid session token (401)");
+    }
+
+    if (new Date(session.expiresAt) < new Date()) {
+      this.logout(); 
+      throw new Error("Session expired. Please login again (401)");
+    }
+
+    // 3. Ownership Check (Authorization)
+    if (targetUserId && session.userId !== targetUserId) {
+      throw new Error("Access denied: You do not own this resource (403)");
+    }
+
+    return session.userId;
+  }
+
+  // ==========================================
   // ANALYTICS
   // ==========================================
   async logEvent(event: string, userId: string | null, metadata?: any): Promise<void> {
@@ -134,6 +173,8 @@ class MockBackendService {
   }
 
   async updateUser(userId: string, updates: Partial<User>): Promise<User> {
+    await this.authGuard(userId); // Middleware Check
+
     if (isSupabaseConfigured()) {
       return supabaseService.updateUser(userId, updates);
     }
@@ -151,6 +192,8 @@ class MockBackendService {
   }
 
   async upgradePlan(userId: string, plan: 'pro' | 'enterprise'): Promise<User> {
+    await this.authGuard(userId); // Middleware Check
+
     if (isSupabaseConfigured()) {
       return supabaseService.upgradePlan(userId, plan);
     }
@@ -172,6 +215,8 @@ class MockBackendService {
   // ==========================================
 
   async getResumes(userId: string): Promise<Resume[]> {
+    await this.authGuard(userId); // Middleware Check
+
     if (isSupabaseConfigured()) {
       return supabaseService.getResumes(userId);
     }
@@ -184,16 +229,27 @@ class MockBackendService {
   }
 
   async getResumeById(id: string): Promise<Resume | null> {
+    // Note: We don't pass userId here because we first need to find the resume 
+    // to know who owns it, THEN check auth.
     if (isSupabaseConfigured()) {
       return supabaseService.getResumeById(id);
     }
 
     await delay(300);
     const resumes = this.getTable<Resume>(DB_KEYS.RESUMES);
-    return resumes.find(r => r.id === id && r.isActive) || null;
+    const resume = resumes.find(r => r.id === id && r.isActive);
+    
+    if (resume) {
+      // Post-fetch Authorization Check
+      await this.authGuard(resume.userId);
+    }
+
+    return resume || null;
   }
 
   async saveResume(userId: string, data: FinalOutput, conversationHistory: Message[] = []): Promise<Resume> {
+    await this.authGuard(userId); // Middleware Check
+
     if (isSupabaseConfigured()) {
       return supabaseService.saveResume(userId, data, conversationHistory);
     }
@@ -219,6 +275,8 @@ class MockBackendService {
   }
 
   async updateResume(userId: string, id: string, updates: Partial<Resume>): Promise<void> {
+    await this.authGuard(userId); // Middleware Check
+
     if (isSupabaseConfigured()) {
       return supabaseService.updateResume(userId, id, updates);
     }
@@ -233,10 +291,14 @@ class MockBackendService {
         updatedAt: new Date().toISOString() 
       };
       this.saveTable(DB_KEYS.RESUMES, resumes);
+    } else {
+      throw new Error("Resume not found or access denied");
     }
   }
 
   async deleteResume(userId: string, id: string): Promise<void> {
+    await this.authGuard(userId); // Middleware Check
+
     if (isSupabaseConfigured()) {
       return supabaseService.deleteResume(userId, id);
     }
@@ -247,6 +309,8 @@ class MockBackendService {
     if (index !== -1) {
       resumes[index].isActive = false; 
       this.saveTable(DB_KEYS.RESUMES, resumes);
+    } else {
+       throw new Error("Resume not found or access denied");
     }
   }
 
