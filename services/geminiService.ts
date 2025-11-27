@@ -4,10 +4,17 @@ import { FinalOutput, Message, ProfessionalResume, CareerInsights } from "../typ
 const CHAT_MODEL = "gemini-2.5-flash";
 const GENERATION_MODEL = "gemini-2.5-flash";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GOOGLE_GENAI_API_KEY || "" });
 
 export class GeminiService {
   private chatSession: Chat | null = null;
+  private client: GoogleGenAI;
+
+  constructor() {
+    const apiKey = import.meta.env.VITE_GOOGLE_GENAI_API_KEY || "";
+    // Initialize with dummy key if missing to prevent crash, but methods will fail if called
+    this.client = new GoogleGenAI({ apiKey: apiKey || "dummy_key_for_init" });
+  }
 
   private getSystemPrompt(): string {
     return `You are a professional, empathetic Career Counselor and Resume Expert named CareerMirror.
@@ -56,13 +63,13 @@ export class GeminiService {
         parts: [{ text: msg.text }]
       }));
 
-      this.chatSession = ai.chats.create({
+      this.chatSession = this.client.chats.create({
         model: CHAT_MODEL,
         config,
         history: geminiHistory
       });
     } else {
-      this.chatSession = ai.chats.create({
+      this.chatSession = this.client.chats.create({
         model: CHAT_MODEL,
         config
       });
@@ -191,7 +198,7 @@ export class GeminiService {
       required: ["personalInfo", "summary", "experience", "skills"],
     };
 
-    const result = await ai.models.generateContent({
+    const result = await this.client.models.generateContent({
       model: GENERATION_MODEL,
       contents: prompt,
       config: {
@@ -262,7 +269,7 @@ export class GeminiService {
       required: ["personalityProfile", "idealRoles", "recommendations", "environments", "careerPath", "redFlags"],
     };
 
-    const result = await ai.models.generateContent({
+    const result = await this.client.models.generateContent({
       model: GENERATION_MODEL,
       contents: prompt,
       config: {

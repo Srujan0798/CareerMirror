@@ -9,18 +9,19 @@
 
 export const config = {
   supabase: {
-    url: "https://curusunnvnsadfswupae.supabase.co",
-    // 🛑 ACTION REQUIRED: Replace with your actual Supabase Anon Key
-    anonKey: process.env.SUPABASE_KEY || "", 
+    url: import.meta.env.VITE_SUPABASE_URL || "https://curusunnvnsadfswupae.supabase.co",
+    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || "", 
   },
   
   // Feature Flags
   features: {
-    useRealBackend: false, // Set to true once you have added the anonKey
+    useRealBackend: true, 
   }
 };
 
 // Helper to check if we can connect
 export const isSupabaseConfigured = () => {
-  return config.supabase.url.length > 0 && config.supabase.anonKey.length > 10;
+  return config.supabase.url.length > 0 && 
+         config.supabase.anonKey.length > 10 &&
+         config.features.useRealBackend;
 };
