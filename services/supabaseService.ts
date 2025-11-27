@@ -25,6 +25,22 @@ export class SupabaseService {
   }
 
   // ==========================================
+  // SYSTEM & HEALTH (Step 1.4 Implementation)
+  // ==========================================
+
+  async healthCheck(): Promise<{ status: string; timestamp: string }> {
+    try {
+      // Lightweight query to check DB connection
+      const { error } = await this.getClient().from('profiles').select('id').limit(1);
+      if (error) throw error;
+      return { status: 'ok', timestamp: new Date().toISOString() };
+    } catch (e) {
+      console.error("Health check failed", e);
+      return { status: 'error', timestamp: new Date().toISOString() };
+    }
+  }
+
+  // ==========================================
   // ANALYTICS
   // ==========================================
 

@@ -26,6 +26,19 @@ const mockCompare = (pwd: string, hash: string) => hash === `hashed_${btoa(pwd)}
 class MockBackendService {
   
   // ==========================================
+  // API SERVER ROUTES (Step 1.4)
+  // ==========================================
+
+  // GET /health
+  async healthCheck(): Promise<{ status: string; timestamp: string }> {
+    if (isSupabaseConfigured()) {
+      return supabaseService.healthCheck();
+    }
+    // Mock health
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  }
+
+  // ==========================================
   // AUTH MIDDLEWARE / GUARD
   // ==========================================
   /**
